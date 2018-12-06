@@ -1,0 +1,216 @@
+/*********************************************************************
+* SdService.cpp
+*
+* Copyright (C)    2017   [DFRobot](http://www.dfrobot.com),
+* GitHub Link :https://github.com/DFRobot/watermonitor
+* This Library is free software: you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation, either version 3 of the License, or
+* (at your option) any later version.
+* 
+* Description:SD card datalogger,Data write format:
+* "Year,Month,Day,Hour,Minues,Second,pH,temp(C),DO(mg/l0,ec(s/m),orp(mv)"
+*
+* Product Links:http://www.dfrobot.com.cn/goods-1142.html
+*
+* SD card attached to SPI bus as follows:
+* UNO:  MOSI - pin 11, MISO - pin 12, CLK - pin 13, CS - pin 4 (CS pin can be changed)
+* and pin #10 (SS) must be an output
+* Mega:  MOSI - pin 51, MISO - pin 50, CLK - pin 52, CS - pin 53
+* and pin #53 (SS) must be an output
+* M0:   Onboard SPI pin,CS - pin 4 (CS pin can be changed)
+*
+* author  :  Jason(jason.ling@dfrobot.com)
+* version :  V1.0
+* date    :  2017-04-19
+**********************************************************************/
+
+// SD card select pin
+//#if defined(__SAMD21G18A__)
+#if defined(__AVR_ATmega2560__)
+
+const int CsPin = 53;
+
+#else
+
+const int CsPin = 4;
+
+#endif
+
+// #define SDUPDATEDATATIME 30000  //去除了定时写入的时间变量
+
+#include "SdService.h"
+#include <SPI.h>
+#include "Debug.h"
+#include "GravityRtc.h"
+
+extern GravityRtc rtc;
+String dataString = "";
+
+SdService ::SdService(ISensor *gravitySensor[]) : chipSelect(CsPin), sdDataUpdateTime(0)
+{
+	this->gravitySensor = gravitySensor;
+}
+
+SdService ::~SdService()
+{
+}
+
+//********************************************************************************************
+// function name: setup ()
+// Function Description: Initialize the SD card
+//********************************************************************************************
+void SdService::setup()
+{
+	Debug::println(F("Initializing SD card..."));
+
+	pinMode(SS, OUTPUT);
+
+	if (!SD.begin(chipSelect))
+	{
+		Debug::println(F("Card failed, or not present"));
+		// don't do anything more:
+		return;
+	}
+	sdReady = true;
+	Debug::println(F("card initialized."));
+
+	// write the file header
+	dataFile = SD.open("sensor.csv", FILE_WRITE);
+	if (dataFile && dataFile.position() == 0)
+	{
+		//dataFile.println(F("Year,Month,Day,Hour,Minues,Second,pH,temp(C),DO(mg/l),ec(s/m),orp(mv)"));
+		//dataFile.println(F("Year,Month,Day,Hour,Minues,Second,O2inAir(%),O2inOffair(%),MoleRatio(%),Co2(PPM),Temp(C),Humi(%),Press(KPa),Air/Offgas(1/0)"));
+		// dataFile.println(F("date,pH,temp(C),DO(mg/l),ec(s/m),orp(mv)"));
+		//dataFile.println(F("date,O2inAir(%),O2inOffair(%),MoleRatio(%),Co2(PPM),Temp(C),Humi(%),Press(KPa),Air/Offgas(1/0)"));
+		dataFile.println(F("date,Temp(C),Humi(%),Press(KPa),Co2(PPM)"));
+		dataFile.close();
+	}
+}
+
+//********************************************************************************************
+// function name: update ()
+// Function Description: Update the data in the SD card
+//********************************************************************************************
+void SdService::update()
+{
+	// if (sdReady && millis() - sdDataUpdateTime > SDUPDATEDATATIME)
+	// {
+	//Serial.println(F("Write Sd card"));
+	dataString = "";
+	// Year Month Day Hours Minute Seconds
+	dataString += String(rtc.year, 10);
+	dataString += "/";
+	dataString += String(rtc.month, 10);
+	dataString += "/";
+	dataString += String(rtc.day, 10);
+	dataString += "/";
+	dataString += String(rtc.hour, 10);
+	dataString += "/";
+	dataString += String(rtc.minute, 10);
+	dataString += "/";
+	dataString += String(rtc.second, 10);
+	dataString += ",";
+
+	// write SD card, write data twice, to prevent a single write data caused by the loss of too large
+	dataFile = SD.open("sensor.csv", FILE_WRITE);
+	if (dataFile)
+	{
+		dataFile.print(dataString);
+		dataFile.close();
+		Debug::print(dataString);
+	}
+
+	dataString = "";
+	//此处为写入传感器数据
+
+	//SensorHub.getValueBySensorNumber(0);
+	// connectString(sensorHub.value[0]);
+
+	// this->gravitySensor[0]->getValue(dataValue)
+	//connectString(sensorHub.value[0]);
+	//connectString(sensorHub.value[1]);
+	//connectString(sensorHub.value[2]);
+	
+	//Debug::print("1");
+	if (this->gravitySensor[0] != NULL)
+	{
+		this->gravitySensor[0]->update();
+		this->gravitySensor[0]->getValue(dataValues);
+		//Debug::print(dataValues[0]);
+		//Debug::print(dataValues[1]);
+		//Debug::print(dataValues[2]);
+		connectString(dataValues[0]);
+		connectString(dataValues[1]);
+		connectString(dataValues[2]);
+	}
+	else
+	{
+		connectString(0);
+		connectString(0);
+		connectString(0);
+	}
+	//temperature
+	//	if (SensorHub.getValueBySensorNumber(0) != NULL)
+	//	{
+	//	}
+	//	else
+	//		connectString(0);
+	//
+	//	//humidity
+	//	if (SensorHub.getValueBySensorNumber(0) != NULL)
+	//	{
+	//		connectString(sensorHub.value[1]);
+	//	}
+	//	else
+	//		connectString(0);
+	//
+	//	//pressure
+	//		if ((SensorHub.getValueBySensorNumber(0) != NULL) {
+	//		connectString(sensorHub.value[2]);
+	//		}
+	//		else
+	//			connectString(0);
+	//CO2
+	if (this->gravitySensor[1] != NULL)
+	{
+		connectString(this->gravitySensor[1]->getValue());
+		Debug::print(this->gravitySensor[1]->getValue());
+	}
+	else
+		connectString(0);
+	// //EC
+	// if (this->gravitySensor[3] != NULL) {
+	// 	connectString(this->gravitySensor[3]->getValue());
+	// }
+	// else
+	// 	connectString(0);
+
+	// //Orp
+	// if (this->gravitySensor[4] != NULL) {
+	// 	connectString(this->gravitySensor[4]->getValue());
+	// }
+	// else
+	// 	connectString(0);
+
+	// write SD card
+	dataFile = SD.open("sensor.csv", FILE_WRITE);
+	if (dataFile)
+	{
+		dataFile.println(dataString);
+		dataFile.close();
+		Debug::println(dataString);
+	}
+	// sdDataUpdateTime = millis();
+	// }
+}
+
+//********************************************************************************************
+// function name: connectString ()
+// Function Description: Connects the string data
+//********************************************************************************************
+void SdService::connectString(double value)
+{
+	dataString += String(value, 10);
+	dataString += ",";
+}
