@@ -19,6 +19,7 @@
 #include "GravitySensorHub.h"
 #include "GravityBme280.h"
 #include "GravityCo2.h"
+#include "GravityO2.h"
 #include "Config.h"
 
 //********************************************************************************************
@@ -39,6 +40,7 @@ GravitySensorHub::GravitySensorHub()
 	}
 	this->sensors[bme280Sensor] = new GravityBme280();
   this->sensors[co2Sensor] = new GravityCo2();
+  this->sensors[o2Sensor] = new GravityO2();
 }
 
 //********************************************************************************************

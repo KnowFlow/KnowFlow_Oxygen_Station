@@ -14,6 +14,7 @@
 //#include "Debug.h"
 #include <SPI.h>
 #include <Wire.h>
+#include"Debug.h"
 
 
 GravityBme280::GravityBme280()
@@ -39,8 +40,8 @@ void GravityBme280::setup()
 
     ///< check if sensor, i.e. the chip ID is correct
     if (read8(BME280_REGISTER_CHIPID) != 0x60)
-        Serial.println(F("BME280 error..."));
-    else Serial.println(F("BME280 detected"));
+        Debug::println(F("BME280 chip error..."));
+    else Debug::println(F("BME280 chip detected..."));
 
     ///< reset the device using soft-reset
     ///< this makes sure the IIR is off, etc.
@@ -52,14 +53,14 @@ void GravityBme280::setup()
     ///< if chip is still reading calibration, delay
     while (isReadingCalibration())
     {
-       Serial.println("waiting...");
+       Debug::println("BME280 chip waiting...");
         delay(100);
     }
 
     readCoefficients(); // read trimming parameters, see DS 4.2.2
 
     setSampling(); // use defaults
-    Serial.println(F("BME280 init finish!"));
+    Debug::println(F("BME280 chip init finish!"));
 }
 
 void GravityBme280::setSampling(eSensorMode       mode,
@@ -446,4 +447,10 @@ void GravityBme280::getValue(double dataValue[])
 	//  dataValue[1] = humidityValue();
 	//  dataValue[2] = pressureValue();
    // return dataValue;
+}
+
+char* GravityBme280::getName()
+{
+  char* sensorName = "BME280";
+  return sensorName;  
 }

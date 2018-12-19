@@ -43,9 +43,14 @@ const int CsPin = 4;
 #include <SPI.h>
 #include "Debug.h"
 #include "GravityRtc.h"
+#include "config.h"
+#include "Debug.h"
 
 extern GravityRtc rtc;
+
+//Initialize variable to hold data
 String dataString = "";
+char storeArrayChar[20];
 
 SdService ::SdService(ISensor *gravitySensor[]) : chipSelect(CsPin), sdDataUpdateTime(0)
 {
@@ -68,22 +73,23 @@ void SdService::setup()
 
 	if (!SD.begin(chipSelect))
 	{
-		Debug::println(F("Card failed, or not present"));
+		Debug::println(F("SD card failed, or not present"));
 		// don't do anything more:
 		return;
 	}
 	sdReady = true;
-	Debug::println(F("card initialized."));
+	Debug::println(F("SD card initialized."));
 
 	// write the file header
 	dataFile = SD.open("sensor.csv", FILE_WRITE);
 	if (dataFile && dataFile.position() == 0)
 	{
+		Debug::println(F("Writing file header to SD"));
 		//dataFile.println(F("Year,Month,Day,Hour,Minues,Second,pH,temp(C),DO(mg/l),ec(s/m),orp(mv)"));
 		//dataFile.println(F("Year,Month,Day,Hour,Minues,Second,O2inAir(%),O2inOffair(%),MoleRatio(%),Co2(PPM),Temp(C),Humi(%),Press(KPa),Air/Offgas(1/0)"));
 		// dataFile.println(F("date,pH,temp(C),DO(mg/l),ec(s/m),orp(mv)"));
 		//dataFile.println(F("date,O2inAir(%),O2inOffair(%),MoleRatio(%),Co2(PPM),Temp(C),Humi(%),Press(KPa),Air/Offgas(1/0)"));
-		dataFile.println(F("date,Temp(C),Humi(%),Press(KPa),Co2(PPM)"));
+		dataFile.println(F("date,time,temperature(^C),humidity(%),pressure(kPa),CO2(ppm),O2(ppm)"));
 		dataFile.close();
 	}
 }
@@ -94,9 +100,11 @@ void SdService::setup()
 //********************************************************************************************
 void SdService::update()
 {
-	// if (sdReady && millis() - sdDataUpdateTime > SDUPDATEDATATIME)
-	// {
-	//Serial.println(F("Write Sd card"));
+	 if (sdReady && millis() - sdDataUpdateTime > SDUPDATEDATATIME)
+	{
+	Debug::println(F("Prepare writing time to SD card"));
+	//Update time from clock module
+   rtc.update();
 	dataString = "";
 	// Year Month Day Hours Minute Seconds
 	dataString += String(rtc.year, 10);
@@ -104,105 +112,112 @@ void SdService::update()
 	dataString += String(rtc.month, 10);
 	dataString += "/";
 	dataString += String(rtc.day, 10);
-	dataString += "/";
+	dataString += ",";
 	dataString += String(rtc.hour, 10);
-	dataString += "/";
+	dataString += ":";
 	dataString += String(rtc.minute, 10);
-	dataString += "/";
+	dataString += ":";
 	dataString += String(rtc.second, 10);
 	dataString += ",";
 
-	// write SD card, write data twice, to prevent a single write data caused by the loss of too large
+	// write time to SD card, write in two operations to keep write size small
 	dataFile = SD.open("sensor.csv", FILE_WRITE);
 	if (dataFile)
 	{
+		Debug::print(F("Writing Time data to card:"));
+    Debug::println(dataString);
+    
 		dataFile.print(dataString);
 		dataFile.close();
-		Debug::print(dataString);
+		
 	}
-
+  
 	dataString = "";
 	//此处为写入传感器数据
+  Debug::println(F("Prepare writing sensor data to SD card"));
 
-	//SensorHub.getValueBySensorNumber(0);
-	// connectString(sensorHub.value[0]);
-
-	// this->gravitySensor[0]->getValue(dataValue)
-	//connectString(sensorHub.value[0]);
-	//connectString(sensorHub.value[1]);
-	//connectString(sensorHub.value[2]);
-	
-	//Debug::print("1");
+  //BME280输出三种参数，做特殊处理
 	if (this->gravitySensor[0] != NULL)
 	{
 		this->gravitySensor[0]->update();
 		this->gravitySensor[0]->getValue(dataValues);
-		//Debug::print(dataValues[0]);
-		//Debug::print(dataValues[1]);
-		//Debug::print(dataValues[2]);
-		connectString(dataValues[0]);
+    Debug::print(this->gravitySensor[0]->getName());
+		Debug::print(F(" data[0]:"));
+		Debug::print(dataValues[0]);
+    Debug::print(F(", data[1]:"));
+		Debug::print(dataValues[1]);
+    Debug::print(F(", data[2]:"));
+		Debug::println(dataValues[2]);
+    
+		/*connectString(dataValues[0]);
 		connectString(dataValues[1]);
-		connectString(dataValues[2]);
+		connectString(dataValues[2]);*/
+    //two decimal digits
+    dtostrf(dataValues[0],2,2,storeArrayChar);
+    connectString(storeArrayChar);
+    dtostrf(dataValues[1],2,2,storeArrayChar);
+    connectString(storeArrayChar);
+    dtostrf(dataValues[2],2,2,storeArrayChar);
+    connectString(storeArrayChar);
 	}
 	else
 	{
-		connectString(0);
-		connectString(0);
-		connectString(0);
+		connectString(0.0);
+		connectString(0.0);
+		connectString(0.0);
+    Debug::print(this->gravitySensor[0]->getName());
+    Debug::println(F(" sensor Error"));
 	}
-	//temperature
-	//	if (SensorHub.getValueBySensorNumber(0) != NULL)
-	//	{
-	//	}
-	//	else
-	//		connectString(0);
-	//
-	//	//humidity
-	//	if (SensorHub.getValueBySensorNumber(0) != NULL)
-	//	{
-	//		connectString(sensorHub.value[1]);
-	//	}
-	//	else
-	//		connectString(0);
-	//
-	//	//pressure
-	//		if ((SensorHub.getValueBySensorNumber(0) != NULL) {
-	//		connectString(sensorHub.value[2]);
-	//		}
-	//		else
-	//			connectString(0);
+
+  /*
 	//CO2
 	if (this->gravitySensor[1] != NULL)
 	{
-		connectString(this->gravitySensor[1]->getValue());
-		Debug::print(this->gravitySensor[1]->getValue());
+		//connectString(this->gravitySensor[1]->getValue());
+    this->gravitySensor[1]->update();
+    dtostrf(this->gravitySensor[1]->getValue(),2,2,storeArrayChar);
+    connectString(storeArrayChar);
+		Debug::print(F("CO2 data:"));
+		Debug::println(this->gravitySensor[1]->getValue());
 	}
 	else
-		connectString(0);
-	// //EC
-	// if (this->gravitySensor[3] != NULL) {
-	// 	connectString(this->gravitySensor[3]->getValue());
-	// }
-	// else
-	// 	connectString(0);
+  {
+		connectString(0.0);
+    Debug::println(F("CO2 sensor Error"));
+  }*/
 
-	// //Orp
-	// if (this->gravitySensor[4] != NULL) {
-	// 	connectString(this->gravitySensor[4]->getValue());
-	// }
-	// else
-	// 	connectString(0);
+  //一个传感器输出一种参数，做通用处理
+    for (int8_t i = 1; i < SENSORCOUNT; i++)
+    {
+      if (this->gravitySensor[i] != NULL)
+      {
+        this->gravitySensor[i]->update();
+        dtostrf(this->gravitySensor[i]->getValue(),2,2,storeArrayChar);
+        connectString(storeArrayChar);
+        Debug::print(this->gravitySensor[i]->getName());
+        Debug::print(F(" data:"));
+        Debug::println(this->gravitySensor[i]->getValue());
+      }    
+      else
+      {
+        connectString(0.0);
+        Debug::print(this->gravitySensor[i]->getName());
+        Debug::println(F(" sensor Error"));
+      }
+    }
 
 	// write SD card
 	dataFile = SD.open("sensor.csv", FILE_WRITE);
 	if (dataFile)
 	{
+		 Debug::print(F("Writing sensor data to SD card:"));
+     Debug::println(dataString);
 		dataFile.println(dataString);
 		dataFile.close();
-		Debug::println(dataString);
 	}
-	// sdDataUpdateTime = millis();
-	// }
+	
+	 sdDataUpdateTime = millis();
+	}
 }
 
 //********************************************************************************************
@@ -211,6 +226,13 @@ void SdService::update()
 //********************************************************************************************
 void SdService::connectString(double value)
 {
-	dataString += String(value, 10);
-	dataString += ",";
+  dataString += String(value, 10);
+  dataString += ",";
+}
+
+
+void SdService::connectString(char valueChar[])
+{
+  dataString += String(valueChar);
+  dataString += ",";
 }

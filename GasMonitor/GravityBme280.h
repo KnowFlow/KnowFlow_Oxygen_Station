@@ -189,6 +189,8 @@ public:
 	double getValue(){};
   void getValue(double dataValue[]);
 
+   char* getName();
+
     void takeForcedMeasurement();
 
     /*!

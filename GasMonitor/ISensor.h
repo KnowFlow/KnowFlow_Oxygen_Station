@@ -15,6 +15,7 @@
 * date    :  2017-04-06
 **********************************************************************/
 #pragma once
+
 class ISensor
 {
 public:
@@ -22,6 +23,7 @@ public:
 	virtual void update()		= 0;
 	virtual double getValue()	= 0;
   virtual void getValue(double dataValue[]) = 0;
+  virtual char* getName() = 0;
   //virtual float temperatureValue() = 0;
   //virtual float pressureValue() = 0;
   //virtual float humidityValue() = 0;

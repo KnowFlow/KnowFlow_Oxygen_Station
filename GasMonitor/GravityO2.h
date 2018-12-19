@@ -1,20 +1,21 @@
 #pragma once
+
 #include "ISensor.h"
 #include "Arduino.h"
 
-class GravityCo2 : public ISensor
+class GravityO2 : public ISensor
 {
 public:
-	GravityCo2();
-	~GravityCo2();
+	GravityO2();
+	~GravityO2();
 
 public:
 	void setup();
 	void update();
 	double getValue();
-  void getValue(double dataValue[]){};
+	void getValue(double dataValue[]){};
   char* getName();
   
 	int pin;
-	double co2Value;
+	double o2Value;
 };

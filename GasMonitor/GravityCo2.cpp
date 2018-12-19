@@ -35,3 +35,9 @@ double GravityCo2::getValue()
 {
 	return this->co2Value;
 }
+
+char* GravityCo2::getName()
+{
+    char* sensorName = "CO2";
+    return sensorName;  
+}

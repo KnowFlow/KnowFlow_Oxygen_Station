@@ -1,4 +1,4 @@
-﻿/*********************************************************************
+/*
 * SdService.h
 *
 * Copyright (C)    2017   [DFRobot](http://www.dfrobot.com),
@@ -60,5 +60,6 @@ class SdService
 
 	// Connect the string data
 	void connectString(double value);
+  void SdService::connectString(char valueChar[]);
 	double dataValues[3] = {0.0, 0.0, 0.0};
 };

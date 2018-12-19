@@ -44,66 +44,43 @@
 #include <Wire.h>
 #include "GravitySensorHub.h"
 #include "GravityRtc.h"
-//#include "OneWire.h"
 #include "SdService.h"
 #include "Debug.h"
-//#include <SoftwareSerial.h>
-//#include <DFRobot_SIM7000.h>
-//#include <EEPROM.h>
-#include "LiquidCrystal_I2C.h"
+#include <SoftwareSerial.h>
+#include "DFRobot_SIM7000.h"
+#include <EEPROM.h>
+#include <OneWire.h>
+
+//iot
+SoftwareSerial mySerial(10, 11);   //关键语句
+DFRobot_SIM7000 sim7000;
+OneWire ds(2);
+#define serverIP "iot.dfrobot.com.cn"
+#define IOT_CLIENT "37386488df2beb56"
+#define IOT_USERNAME "H1-QCEdJxN"
+#define IOT_KEY "rJG70VOJxN"
+#define IOT_TEMP "H1b1Sd1e4"
+#define IOT_HUMI "SkCGH_yeE"
+#define IOT_PRESS "HJwEr_1gN"
+#define IOT_CO2 "Bk-BSuye4"
+#define IOT_O2 "ryRHSukeE"
+#define IOT_TEMP "H1b1Sd1e4"
+#define IOT_HUMI "SkCGH_yeE"
+#define IOT_PRESS "HJwEr_1gN"
+#define IOT_CO2 "Bk-BSuye4"
+#define IOT_O2 "ryRHSukeE"
+boolean flag = 0;
 
 // clock module
 GravityRtc rtc;
-#define RelayAir 32
-#define RelayOffgas 36
-#define RelayPump 39
 
 // sensor monitor
 GravitySensorHub sensorHub;
 SdService sdService = SdService(sensorHub.sensors);
 
-//IOT的设置
-//SoftwareSerial mySerial(8, 7);
-//DFRobot_SIM7000 sim7000;
-//OneWire ds(2);
-
-//#define serverIP "iot.dfrobot.com.cn"
-//#define IOT_CLIENT "195ff91766ff7bb0"
-//#define IOT_USERNAME "H1W0p7j5Rz"
-//#define IOT_KEY "B1GATmi5Rz"
-//#define IOT_TEMPERATURE "B1Ti7Zg87"
-//#define IOT_PH "rJUPQZxIm"
-//#define IOT_EC "rJWumWx8Q"
-
-//#define PH_PIN A1
-//#define EC_PIN A2
-//boolean flag = 0;
-//float voltage, phValue, ecValue, temperature = 25;
-//DFRobot_PH ph;
-//DFRobot_EC ec;
-
-// test函数的设置
-unsigned long delayTime = 0; //test模式超时时间
-unsigned long testTime = 0;  //校准预热时间
-int time = 0;				 //180s
-int testflag = 0;
-float O2 = 21;
-float CO2 = 400;
-char num = '9';
-//年月日修改设置
-uint16_t year = 2018;
-uint8_t month = 12;
-uint8_t day = 30;
-uint8_t week = 7;
-uint8_t hour = 12;
-uint8_t minute = 0;
-uint8_t second = 0;
-uint16_t temp1 = 0;
-uint8_t temp2 = 0;
-
 //loop函数中的变量
 unsigned long updateTime = 0;
-unsigned int flag = 0;
+//unsigned int flag = 0;
 unsigned int flag0 = 0;
 unsigned long lcdTime = 0;
 //unsigned long firstTime = 600000;
@@ -113,510 +90,263 @@ unsigned long secondTime = 12000;
 String SerTest = "";
 
 //lcd屏幕显示的变量
-LiquidCrystal_I2C lcd(0x27, 16, 2);
+//LiquidCrystal_I2C lcd(0x27, 16, 2);
 float MoleRatio;
-
-void test()
-{
-	//加入一个flag，当test后flag为1，回到Loop中不需要判断test直接进入，直到test输入0时flag为0退出
-	Serial.println("1、CAL：O2");
-	Serial.println("2、CAL：CO2");
-	Serial.println("3、TIME");
-	Serial.println("4、DATE");
-	Serial.println("5、TIMER");
-	Serial.println("6、normal");
-	Serial.println("0、exit");
-	Serial.println("please input a number");
-	// if (Serial.available())
-	// {
-	// 	num = Serial.read();
-	// }
-	while (num == '9')
-	{
-		//	num = Serial.read();
-		if (Serial.available())
-		{
-			num = Serial.read();
-		}
-		switch (num)
-		{
-		case '0': //exit
-			testflag = 0;
-			num = '8';
-			Serial.println("exit test");
-			break;
-		case '1': //O2
-			//串口输入校准值
-			Serial.println("input O2 calibration value");
-			while (1)
-			{
-				if (Serial.available())
-				{
-					O2 = Serial.read();
-					break;
-				}
-			}
-			time = 180;
-			Serial.print(time);
-			Serial.println("s  O2 start");
-			testTime = millis();
-			for (time = 180; time > 0;)
-			{
-				//if (millis() - testTime > 10000)
-				if (millis() - testTime > 1000)
-				{
-					testTime = millis();
-					time = time - 10;
-					Serial.print(time);
-					Serial.println("s");
-				}
-			}
-			testTime = millis();
-
-			while (1)
-			{
-				if (millis() - testTime > 3000)
-				{
-					testTime = millis();
-					sensorHub.update();
-					Serial.print("O2:");
-					Serial.print(O2);
-					//Serial.print(sensorHub.getValueBySensorNumber(1));
-					Serial.println("%");
-					Serial.println("if you want to stop, input 'OK'");
-				}
-				if (Serial.available())
-				{
-					//wchar_t valOK = Serial.read();
-					char valOK = Serial.read();
-					if (valOK == 'O')
-					{
-						Serial.print("O2 CAL:");
-						Serial.print(O2);
-						Serial.println("ppm");
-						Serial.println("CAL O2 OK");
-						break;
-					}
-				}
-			}
-			//串口输出数据，待稳定后，串口输入OK后，完成校准。
-			num = '8';
-			break;
-		case '2': //CO2
-			//串口输入校准值
-			Serial.println("input CO2 calibration value");
-			while (1)
-			{
-				if (Serial.available())
-				{
-					CO2 = Serial.read();
-					break;
-				}
-			}
-			time = 180;
-			Serial.print(time);
-			Serial.println("s  CO2 start"); //显示一次180s
-			testTime = millis();
-			for (time = 180; time > 0;)
-			{
-				//if (millis() - testTime > 10000)
-				if (millis() - testTime > 1000)
-				{
-					testTime = millis();
-					time = time - 10;
-					Serial.print(time);
-					Serial.println("s");
-				}
-			}
-			testTime = millis();
-			while (1)
-			{
-				if (millis() - testTime > 3000)
-				{
-					testTime = millis();
-					sensorHub.update();
-					Serial.print("CO2:");
-					Serial.print(sensorHub.getValueBySensorNumber(1));
-					Serial.println("ppm");
-					Serial.println("if you want to stop, input 'OK'");
-				}
-				if (Serial.available())
-				{
-					//wchar_t valOK = Serial.read();
-					char valOK = Serial.read();
-					if (valOK == 'O')
-					{
-						Serial.print("CO2 CAL:");
-						Serial.print(CO2);
-						Serial.println("ppm");
-						Serial.println("CAL CO2 OK");
-						break;
-					}
-				}
-			}
-			//串口输出数据，待稳定后，串口输入OK后，完成校准。
-			num = '8';
-			break;
-		case '3': //time
-			Serial.println("please input hour, like 12 (0~23)");
-			while (1)
-			{
-				if (Serial.available())
-				{
-					while (Serial.available() > 0)
-					{							   // 串口收到字符数大于零。
-						temp2 = Serial.parseInt(); // 在串口数据流中查找一个有效整数。
-						hour = temp2;			   //打印接收到的数字
-					}
-					break;
-				}
-			}
-
-			Serial.println("please input minute, like 45 (0~59)");
-			while (1)
-			{
-				if (Serial.available())
-				{
-					while (Serial.available() > 0)
-					{							   // 串口收到字符数大于零。
-						temp2 = Serial.parseInt(); // 在串口数据流中查找一个有效整数。
-						minute = temp2;			   //打印接收到的数字
-					}
-					break;
-				}
-			}
-			rtc.adjustRtc(year, month, day, week, hour, minute, second);
-			Serial.print("now time is");
-			Serial.print(hour);
-			Serial.print("/");
-			Serial.print(minute);
-			Serial.println("/0");
-			num = '8';
-			break;
-		case '4': //date
-			Serial.println("please input year, like 2018 (2001~2099)");
-			while (1)
-			{
-				if (Serial.available())
-				{
-					while (Serial.available() > 0)
-					{							   // 串口收到字符数大于零。
-						temp1 = Serial.parseInt(); // 在串口数据流中查找一个有效整数。
-						year = temp1;			   //打印接收到的数字
-					}
-					break;
-				}
-			}
-			Serial.println("please input month, like 12 (1~12)");
-			while (1)
-			{
-				if (Serial.available())
-				{
-					while (Serial.available() > 0)
-					{							   // 串口收到字符数大于零。
-						temp2 = Serial.parseInt(); // 在串口数据流中查找一个有效整数。
-						month = temp2;			   //打印接收到的数字
-					}
-					break;
-				}
-			}
-			Serial.println("please input day, like 7 (1~31)");
-			while (1)
-			{
-				if (Serial.available())
-				{
-					while (Serial.available() > 0)
-					{							   // 串口收到字符数大于零。
-						temp2 = Serial.parseInt(); // 在串口数据流中查找一个有效整数。
-						day = temp2;			   //打印接收到的数字
-					}
-					break;
-				}
-			}
-			Serial.println("please input week, like 7 (1~7)");
-			while (1)
-			{
-				if (Serial.available())
-				{
-					while (Serial.available() > 0)
-					{							   // 串口收到字符数大于零。
-						temp2 = Serial.parseInt(); // 在串口数据流中查找一个有效整数。
-						week = temp2;			   //打印接收到的数字
-					}
-					break;
-				}
-			}
-			rtc.adjustRtc(year, month, day, week, hour, minute, second);
-			Serial.print("now time is");
-			Serial.print(year);
-			Serial.print("/");
-			Serial.print(month);
-			Serial.print("/");
-			Serial.print(day);
-			Serial.print("/");
-			Serial.println(week);
-			num = '8';
-			break;
-		case '5': //timer
-				  //间隔怎么设置？第一段第二段第三段时间的设置？
-			Serial.println("input the air sensor's timer(ms)");
-			while (1)
-			{
-				if (Serial.available())
-				{
-					while (Serial.available() > 0)
-					{								   // 串口收到字符数大于零。
-						firstTime = Serial.parseInt(); // 在串口数据流中查找一个有效整数。
-					}
-					break;
-				}
-			}
-			Serial.println("input the offgas sensor's timer(ms)");
-			while (1)
-			{
-				if (Serial.available())
-				{
-					while (Serial.available() > 0)
-					{									// 串口收到字符数大于零。
-						secondTime = Serial.parseInt(); // 在串口数据流中查找一个有效整数。
-					}
-					break;
-				}
-			}
-			Serial.println("timer is ok");
-			Serial.print(firstTime);
-			Serial.print("and");
-			Serial.println(secondTime);
-			num = '8';
-			break;
-		case '6': //normal
-				  //输入6为默认设置，哪些默认设置
-			Serial.println("normal");
-			firstTime = 600000;
-			secondTime = 1200000;
-			rtc.adjustRtc(2018, 12, 30, 7, 12, 0, 0);
-			O2 = 21;
-			CO2 = 400;
-			num = '8';
-			break;
-		default: // 可选的
-			num = '9';
-		}
-	}
-}
 
 void setup()
 {
-	Serial.begin(115200);
-	rtc.setup();
-	sensorHub.setup();
-	sdService.setup();
+  Serial.begin(115200);
+  rtc.setup();
+  sensorHub.setup();
+  sdService.setup();
 
-	//三个继电器的初始化
-	pinMode(RelayAir, OUTPUT);
-	pinMode(RelayOffgas, OUTPUT);
-	pinMode(RelayPump, OUTPUT);
-	digitalWrite(RelayAir, HIGH);
-	digitalWrite(RelayOffgas, LOW);
-	digitalWrite(RelayPump, HIGH);
+  //rtc.adjustRtc(2018,12,8,6,14,1,0);
 
-	//IOT的初始化
-	// while(!Serial);
-	// if(SIM7000_Begin()==0)
-	// {
-	//    Serial.println(F("Init SIM7000 Successful"));
-	//    flag = 1;
-	// }
+  //lcd初始化
+  //lcd.init();
+  //lcd.backlight();
 
-	//lcd初始化
-	lcd.init();
-	lcd.backlight();
+  //iot
+  //Serial.begin(115200);
+  while (!Serial)
+    ;
+  if (SIM7000_Begin() == 0)
+  {
+    Serial.println(F("Init SIM7000 Successful"));
+    flag = 1;
+  }
 }
-
-//********************************************************************************************
-// function name: sensorHub.getValueBySensorNumber (0)
-// Function Description: Get the sensor's values, and the different parameters represent the acquisition of different sensor data
-// Parameters: 0 ph value
-// Parameters: 1 temperature value
-// Parameters: 2 Dissolved Oxygen
-// Parameters: 3 Conductivity
-// Parameters: 4 Redox potential
-// return value: returns a double type of data
-//********************************************************************************************
 
 void loop()
 {
-	rtc.update();
+  rtc.update();
+  sensorHub.update();
+  sdService.update();
 
-	//test模式进入
-	if (Serial.available())
-	{
-		//wchar_t val = Serial.read();
-		while (Serial.available() > 0)
-		{
-			SerTest += char(Serial.read()); //每次读一个char字符，并相加
-			delay(2);
-		}
-		//String val = Serial.read();
-		Serial.println(SerTest);
-		if (SerTest == "test" && testflag == 0)
-		{
-			testflag = 1;
-			SerTest = "";
-			test();
-		}
-	}
-	if (testflag == 1)
-	{
-		num = '9';
-		test();
-	}
+  if (millis() - updateTime > 1000)
+  {
+    updateTime = millis();
+    sensorHub.getValueBySensorNumber(0);
+    Serial.print(F("temperature:"));
+    Serial.print(sensorHub.value[0]);
+    Serial.print(F("  ,humidity:"));
+    Serial.print(sensorHub.value[1]);
+    Serial.print(F("  ,pressure:"));
+    Serial.print(sensorHub.value[2]);
+    Serial.print(F("  CO2:"));
+    Serial.print(sensorHub.getValueBySensorNumber(1));
+    Serial.print(F("  O2:"));
+    Serial.println(sensorHub.getValueBySensorNumber(2));
+    SIM7000_Send(sensorHub.value[0], sensorHub.value[1], sensorHub.value[2], sensorHub.getValueBySensorNumber(1), sensorHub.getValueBySensorNumber(2));
 
-	//lcd屏幕显示
-	lcdTime = millis();
-	if (millis() - lcdTime > 3000)
-	{
-		sensorHub.update();
-		lcd.setCursor(0, 0);
-		lcd.print("MoleRatio：96");
-		//lcd.print(MoleRatio);
-		lcd.setCursor(0, 1);
-		
-		switch (flag0)
-	{
-		case 0: //**:00~**:10
-		sensorHub.update();
-		sensorHub.getValueBySensorNumber(0);
-		lcd.print("temp:");
-		lcd.print(sensorHub.value[0]);
-		flag0=flag0+1;
-		break;
-	case 1: //**:10~**:30
-		sensorHub.update();
-		sensorHub.getValueBySensorNumber(0);
-		lcd.print("hum:");
-		lcd.print(sensorHub.value[1]);
-		flag0=flag0+1;
-		break;
-	case 2: //**:30~**:40
-		sensorHub.update();
-		sensorHub.getValueBySensorNumber(0);
-		lcd.print("press:");
-		lcd.print(sensorHub.value[2]);
-		flag0=flag0+1;
-		break;
-	case 3: //**:40~**:00
-		sensorHub.update();
-		lcd.print("CO2:");
-		lcd.print(sensorHub.getValueBySensorNumber(1));
-		flag0=0;
-		break;
-	default: // 可选的
-		Serial.print("LCD ERROR");
-	}
-	}
-
-	//分时间段显示
-	switch (flag)
-	{
-	case 0: //**:00~**:10
-		digitalWrite(RelayPump, HIGH);
-		if (millis() - updateTime > firstTime)
-		{
-			updateTime = millis();
-			rtc.update();
-			sdService.update();
-			flag++;
-			Serial.println("00~10,pump high");
-		}
-
-		break;
-	case 1: //**:10~**:30
-		digitalWrite(RelayAir, LOW);
-		digitalWrite(RelayOffgas, HIGH);
-		if (millis() - updateTime > secondTime)
-		{
-			updateTime = millis();
-			rtc.update();
-			sdService.update();
-			flag++;
-			Serial.println("10~30,pump high air low gas high");
-		}
-
-		break;
-	case 2: //**:30~**:40
-		digitalWrite(RelayAir, HIGH);
-		digitalWrite(RelayOffgas, LOW);
-		if (millis() - updateTime > firstTime)
-		{
-			updateTime = millis();
-			rtc.update();
-			sdService.update();
-			flag++;
-			Serial.println("30~40,pump high air high gas low");
-		}
-
-		break;
-	case 3: //**:40~**:00
-		digitalWrite(RelayPump, LOW);
-		if (millis() - updateTime > secondTime)
-		{
-			updateTime = millis();
-			rtc.update();
-			flag = 0;
-			Serial.println("40~00,pump low");
-		}
-
-		break;
-	default: // 可选的
-		Serial.print("flag default");
-	}
+    Serial.print("   Year = "); //year
+    Serial.print(rtc.year);
+    Serial.print("   Month = "); //month
+    Serial.print(rtc.month);
+    Serial.print("   Day = "); //day
+    Serial.print(rtc.day);
+    Serial.print("   Week = "); //week
+    Serial.print(rtc.week);
+    Serial.print("   Hour = "); //hour
+    Serial.print(rtc.hour);
+    Serial.print("   Minute = "); //minute
+    Serial.print(rtc.minute);
+    Serial.print("   Second = "); //second
+    Serial.println(rtc.second);
+  }
 }
-// rtc.update();
-// sensorHub.update();
-// sdService.update();
 
-// // ************************* Serial debugging ******************
-// if(millis() - updateTime > 2000)
-// {
-// 	updateTime = millis();
-// 	Serial.print(F("ph= "));
-// 	Serial.print(sensorHub.getValueBySensorNumber(0));
-// 	Serial.print(F("  Temp= "));
-// 	Serial.print(sensorHub.getValueBySensorNumber(1));
-// 	Serial.print(F("  Do= "));
-// 	Serial.print(sensorHub.getValueBySensorNumber(2));
-// 	Serial.print(F("  Ec= "));
-// 	Serial.print(sensorHub.getValueBySensorNumber(3));
-// 	Serial.print(F("  Orp= "));
-// 	Serial.println(sensorHub.getValueBySensorNumber(4));
-// }
+int SIM7000_Begin()
+{
+  int count;
+  sim7000.begin(mySerial);
+  Serial.println(F("Turn ON SIM7000......"));
+  if (sim7000.turnON())
+  { //Turn ON SIM7000
+    Serial.println(F("Turn ON !"));
+  }
+  else
+  {
+    Serial.println(F("Turn ON FAILED!"));
+    return -1;
+  }
+  Serial.println(F("Set baud rate......"));
+  count = 5;
+  while (1)
+  {
+    if (sim7000.setBaudRate(19200))
+    { //Set SIM7000 baud rate from 115200 to 19200 reduce the baud rate to avoid distortion
+      Serial.println(F("Set baud rate:19200 Successful"));
+      break;
+    }
+    else
+    {
+      Serial.println(F("Faile to set baud rate"));
+      delay(1000);
+      count--;
+      if (count <= 0)
+        return -1;
+    }
+  }
 
-//* ***************************** Print the relevant debugging information ************** ************ * /
-// Note: Arduino M0 need to replace Serial with SerialUSB when printing debugging information
+  Serial.println(F("Check SIM card......"));
+  if (sim7000.checkSIMStatus())
+  { //Check SIM card
+    Serial.println(F("SIM card READY"));
+  }
+  else
+  {
+    Serial.println(F("SIM card ERROR, Check if you have insert SIM card and restart SIM7000"));
+    return -1;
+  }
 
-// ************************* Serial debugging ******************
-//Serial.print("ph= ");
-//Serial.print(sensorHub.getValueBySensorNumber(0));
-//Serial.print("  Temp= ");
-//Serial.print(sensorHub.getValueBySensorNumber(1));
-//Serial.print("  Orp= ");
-//Serial.println(sensorHub.getValueBySensorNumber(4));
-//Serial.print("  EC= ");
-//Serial.println(sensorHub.getValueBySensorNumber(3));
+  count = 5;
+  Serial.println(F("Set net mode......"));
+  while (1)
+  {
+    if (sim7000.setNetMode(GPRS))
+    { //Set net mod NB-IOT
+      Serial.println(F("Set GPRS mode successful"));
+      break;
+    }
+    else
+    {
+      Serial.println(F("Fail to set mode"));
+      delay(1000);
+      count--;
+      if (count <= 0)
+        return -1;
+    }
+  }
 
-// ************************************************************ time ********************** **********
-//Serial.print("   Year = ");//year
-//Serial.print(rtc.year);
-//Serial.print("   Month = ");//month
-//Serial.print(rtc.month);
-//Serial.print("   Day = ");//day
-//Serial.print(rtc.day);
-//Serial.print("   Week = ");//week
-//Serial.print(rtc.week);
-//Serial.print("   Hour = ");//hour
-//Serial.print(rtc.hour);
-//Serial.print("   Minute = ");//minute
-//Serial.print(rtc.minute);
-//Serial.print("   Second = ");//second
-//Serial.println(rtc.second);
+  /*Serial.println("Get signal quality......");
+    delay(500);
+    signalStrength=sim7000.checkSignalQuality();                 //Check signal quality from (0-30)
+    Serial.print("signalStrength =");
+    Serial.println(signalStrength);
+    delay(500);
+    */
+  count = 5;
+  Serial.println(F("Attaching service......"));
+  while (1)
+  {
+    if (sim7000.attacthService())
+    { //Open the connection
+      Serial.println(F("Attach service"));
+      break;
+    }
+    else
+    {
+      Serial.println(F("Fail to Attach service"));
+      delay(1000);
+      count--;
+      if (count <= 0)
+        return -1;
+    }
+  }
+  return 0;
+}
+
+
+
+int SIM7000_Send(float _temp, float _humi, float _press,float _CO2,float _O2)
+{
+  Serial.print(F("Connect to :"));
+  Serial.println(F(serverIP));
+  if (sim7000.openNetwork(TCP, serverIP, 1883))
+  { //Connect to server
+    Serial.println(F("Connected !"));
+  }
+  else
+  {
+    Serial.println(F("Failed to connect"));
+    return -1;
+  }
+  delay(200);
+
+  Serial.print(F("Connect to : "));
+  Serial.println(F(IOT_USERNAME));
+  if (sim7000.mqttConnect(IOT_CLIENT, IOT_USERNAME, IOT_KEY))
+  { //MQTT connect request
+    Serial.println(F("Connected !"));
+  }
+  else
+  {
+    Serial.println(F("Failed to connect"));
+    return -1;
+  }
+  delay(200);
+
+  Serial.println(F("Send temperature data... "));
+  if (sim7000.mqttPublish(IOT_TEMP, (String)_temp))
+  {
+    Serial.println(F("temperature send OK"));
+  }
+  else
+  {
+    Serial.println(F("Failed to send temperature"));
+    return -1;
+  }
+  delay(200);
+
+  Serial.println(F("Send HUMI data... "));
+  if (sim7000.mqttPublish(IOT_HUMI, (String)_humi))
+  {
+    Serial.println(F("HUMI send OK"));
+  }
+  else
+  {
+    Serial.println(F("Failed to send HUMI"));
+    return -1;
+  }
+  delay(200);
+
+  Serial.println(F("Send PRESS data... "));
+  if (sim7000.mqttPublish(IOT_PRESS, (String)_press))
+  {
+    Serial.println(F("PRESS send OK"));
+  }
+  else
+  {
+    Serial.println(F("Failed to send PRESS"));
+    return -1;
+  }
+  delay(200);
+
+  Serial.println(F("Send CO2 data... "));
+  if (sim7000.mqttPublish(IOT_CO2, (String)_CO2))
+  {
+    Serial.println(F("CO2 send OK"));
+  }
+  else
+  {
+    Serial.println(F("Failed to send CO2"));
+    return -1;
+  }
+  delay(200);
+  
+  Serial.println(F("Send O2 data... "));
+  if (sim7000.mqttPublish(IOT_O2, (String)_O2))
+  {
+    Serial.println(F("O2 send OK"));
+  }
+  else
+  {
+    Serial.println(F("Failed to send O2"));
+    return -1;
+  }
+  delay(200);
+
+  Serial.println(F("Close connection......"));
+  if (sim7000.closeNetwork())
+  { //Close connection
+    Serial.println(F("Close connection !"));
+  }
+  else
+  {
+    Serial.println(F("Fail to close connection !"));
+    return -1;
+  }
+  delay(2000);
+  return 0;
+}

@@ -12,15 +12,15 @@
 
 //Sensor pin settings
 #define CO2PIN  A0
+#define O2PIN A1
 
-
-//The maximum number of sensors
-#define SENSORCOUNT 5
+//The number of sensors
+#define SENSORCOUNT 3
 
 //The sensor corresponds to the array number, ph=0, temperature=1..., the maximum number is SENSORCOUNT-1
 enum SensorNumber
 {
 	bme280Sensor = 0, //I2C
-  co2Sensor,
-  o2Sensor
+	co2Sensor,
+	o2Sensor
 };
